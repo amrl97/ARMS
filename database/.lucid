@@ -1,0 +1,16 @@
+{
+  "_comment": "Documented using Lucid for VS Code: https://marketplace.visualstudio.com/items?itemName=LucidSoftware.lucidforvscode",
+  "diagrams": [
+    {
+      "documentId": "c0f9ee51-f0fd-4c2e-aac0-4ac7290d39b9",
+      "title": "UAMS ERD",
+      "pages": [
+        {
+          "id": "0_0",
+          "title": "Page 1",
+          "actionHistoryLength": 2057
+        }
+      ]
+    }
+  ]
+}

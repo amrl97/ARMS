@@ -1,0 +1,30 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('access_request_comments', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('request_id')->constrained('access_requests')->restrictOnDelete();
+            $table->foreignId('commented_by')->constrained('users')->restrictOnDelete();
+            $table->text('comment');
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('access_request_comments');
+    }
+};
