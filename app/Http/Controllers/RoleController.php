@@ -2,11 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use Inertia\Inertia;
+use App\Http\Requests\StoreRoleRequest;
 use App\Models\Role;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
 
 class RoleController extends Controller
 {
@@ -16,7 +15,7 @@ class RoleController extends Controller
     public function index()
     {
         return Inertia::render('roles/index', [
-            'roles' => Role::withCount('moduleApprovers')
+            'roles' => Role::withCount(['users', 'moduleApprovers'])
                 ->orderBy('name')
                 ->paginate(10),
         ]);
@@ -33,16 +32,18 @@ class RoleController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreRoleRequest $request)
     {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255', Rule::unique('roles', 'name')],
-        ]);
+        $data = $request->validated();
 
         Role::create($data);
 
-        return to_route('roles.index')
-            ->with('success', 'Role created successfully.');
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => 'Role created successfully.',
+        ]);
+
+        return to_route('roles.index');
     }
 
     /**
@@ -51,7 +52,7 @@ class RoleController extends Controller
     public function show(Role $role)
     {
         return Inertia::render('roles/view', [
-            'role' => $role->loadCount('moduleApprovers'),
+            'role' => $role->loadCount(['users', 'moduleApprovers']),
         ]);
     }
 
@@ -68,16 +69,18 @@ class RoleController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Role $role)
+    public function update(StoreRoleRequest $request, Role $role)
     {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255', Rule::unique('roles', 'name')->ignore($role->id)],
-        ]);
+        $data = $request->validated();
 
         $role->update($data);
 
-        return to_route('roles.index')
-            ->with('success', 'Role updated successfully.');
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => 'Role updated successfully.',
+        ]);
+
+        return to_route('roles.index');
     }
 
     /**
@@ -85,15 +88,19 @@ class RoleController extends Controller
      */
     public function destroy(Role $role)
     {
-        if ($role->moduleApprovers()->exists()) {
+        if ($role->users()->exists() || $role->moduleApprovers()->exists()) {
             throw ValidationException::withMessages([
-                'role' => 'This role is assigned to one or more module approvers and cannot be deleted.',
+                'role' => 'This role is assigned to users or module approver rules and cannot be deleted.',
             ]);
         }
 
         $role->delete();
 
-        return to_route('roles.index')
-            ->with('success', 'Role deleted successfully.');
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => 'Role deleted successfully.',
+        ]);
+
+        return to_route('roles.index');
     }
 }

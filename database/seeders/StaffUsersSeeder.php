@@ -3,7 +3,9 @@
 namespace Database\Seeders;
 
 use App\Models\Department;
+use App\Models\Role;
 use App\Models\User;
+use App\Services\RoleAssignmentService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -69,7 +71,6 @@ class StaffUsersSeeder extends Seeder
             'Health, Safety and Environment' => [
                 ['Khairul Anwar Bin Ismail', 'khairul.anwar@perdana.my'],
                 ['Mohd Hafiz bin Ab Wahab', 'hafizh.wahab@perdana.my'],
-                ['Muhammad Alif Muhamin Bin Huzaimi', 'alif.muhamin@perdana.my'],
                 ['Rusmawati Binti Hussein', 'rusmawati.hussein@perdana.my'],
                 ['Muhammad Najwan Adli Muhamad Arif', 'najwan.adli@perdana.my'],
             ],
@@ -105,18 +106,25 @@ class StaffUsersSeeder extends Seeder
                 ['Chiong Sui Huk', 'schiong@perdana.my'],
                 ['Muhammad Shahmin Ashraf bin Zulkefilli', 'shahmin.zulkefilli@perdana.my'],
                 ['Muhammad Syahrul Hanizi Bin Yaacob', 'syahrul.hanizi@perdana.my'],
-                ['Padmarajen A/L Karuppan', 'rajen.k@perdana.my'],
                 ['Rajendran A/L Pragasam', 'rajendran.pragasam@perdana.my'],
-                ['Titu Gung Shyan', 'gs.tiu@perdana.my'],
+                ['Tiu Gung Shyan', 'gs.tiu@perdana.my'],
                 ['Andrew Tan Wee Loon', 'andrew.tan@perdana.my'],
                 ['Daniel William Uyo', 'daniel.uyo@perdana.my'],
                 ['Md Soflee Bin Haron', 'sofee.haron@perdana.my'],
                 ['Nagendran A/L Seetharaman', 'nagendran.s@perdana.my'],
                 ['Wellie Anak Bujang', 'wellie.bujang@perdana.my'],
             ],
+            'Fleet Management' => [
+                ['Padmarajen A/L Karuppan', 'rajen.k@perdana.my'],
+            ],
+            'Corporate Strategy and Planning' => [
+                ['Adyhafis bin Abdul Razab', 'adyhafis.razab@perdana.my'],
+            ],
         ];
 
         $departmentIds = Department::query()->pluck('id', 'name');
+        $staffRole = Role::query()->where('name', 'Staff')->firstOrFail();
+        $roleAssignmentService = app(RoleAssignmentService::class);
 
         foreach ($usersByDepartment as $departmentName => $users) {
             $departmentId = $departmentIds->get($departmentName);
@@ -126,7 +134,7 @@ class StaffUsersSeeder extends Seeder
             }
 
             foreach ($users as [$fullname, $email]) {
-                User::firstOrCreate(
+                $user = User::firstOrCreate(
                     ['email' => $email],
                     [
                         'fullname' => $fullname,
@@ -136,6 +144,12 @@ class StaffUsersSeeder extends Seeder
                         'password' => Hash::make('Perdana@2026'),
                     ],
                 );
+
+                if ($user->department_id !== $departmentId) {
+                    $user->update(['department_id' => $departmentId]);
+                }
+
+                $roleAssignmentService->assignRoles($user, [$staffRole->id]);
             }
         }
     }

@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Enums\AccessRequestDetailStatus;
 use App\Enums\AccessRequestStatus;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use LogicException;
 
 class AccessRequest extends Model
@@ -16,12 +18,18 @@ class AccessRequest extends Model
         'remarks',
     ];
 
-    public function internalBeneficiary()
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function internalBeneficiary(): BelongsTo
     {
         return $this->belongsTo(User::class, 'internal_beneficiary');
     }
 
-    public function requestedBy()
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function requestedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'requested_by');
     }
@@ -95,17 +103,26 @@ class AccessRequest extends Model
 
     // Relationships with related models
 
-    public function details()
+    /**
+     * @return HasMany<AccessRequestDetail, $this>
+     */
+    public function details(): HasMany
     {
         return $this->hasMany(AccessRequestDetail::class, 'request_id');
     }
-    
-    public function attachments()
+
+    /**
+     * @return HasMany<AccessRequestAttachment, $this>
+     */
+    public function attachments(): HasMany
     {
         return $this->hasMany(AccessRequestAttachment::class, 'request_id');
     }
 
-    public function comments()
+    /**
+     * @return HasMany<AccessRequestComment, $this>
+     */
+    public function comments(): HasMany
     {
         return $this->hasMany(AccessRequestComment::class, 'request_id');
     }

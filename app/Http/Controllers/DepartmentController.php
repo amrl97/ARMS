@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use Inertia\Inertia;
 use App\Models\Department;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
 
 class DepartmentController extends Controller
 {
@@ -41,8 +41,12 @@ class DepartmentController extends Controller
 
         Department::create($data);
 
-        return to_route('departments.index')
-            ->with('success', 'Department created successfully.');
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => 'Department created successfully.',
+        ]);
+
+        return to_route('departments.index');
     }
 
     /**
@@ -76,8 +80,12 @@ class DepartmentController extends Controller
 
         $department->update($data);
 
-        return to_route('departments.index')
-            ->with('success', 'Department updated successfully.');
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => 'Department updated successfully.',
+        ]);
+
+        return to_route('departments.index');
     }
 
     /**
@@ -93,7 +101,11 @@ class DepartmentController extends Controller
 
         $department->delete();
 
-        return to_route('departments.index')
-            ->with('success', 'Department deleted successfully.');
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => 'Department deleted successfully.',
+        ]);
+
+        return to_route('departments.index');
     }
 }

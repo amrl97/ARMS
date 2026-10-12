@@ -6,7 +6,8 @@ defineProps<{
         data: Array<{
             id: number;
             name: string;
-            // module_approvers_count: number;
+            users_count: number;
+            module_approvers_count: number;
         }>;
         links: Array<{ url: string | null; label: string; active: boolean }>;
     };
@@ -46,15 +47,17 @@ function paginationLabel(label: string): string {
         <table class="w-full border text-left">
             <thead>
                 <tr class="border-b bg-gray-50">
-                    <th class="p-10">Name</th>
-                    <!-- <th class="p-2">Module Approvers</th> -->
+                    <th class="p-2">Name</th>
+                    <th class="p-2">Users</th>
+                    <th class="p-2">Module approver rules</th>
                     <th class="p-2">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 <tr v-for="role in roles.data" :key="role.id" class="border-b">
                     <td class="p-2">{{ role.name }}</td>
-                    <!-- <td class="p-2">{{ role.module_approvers_count }}</td> -->
+                    <td class="p-2">{{ role.users_count }}</td>
+                    <td class="p-2">{{ role.module_approvers_count }}</td>
                     <td class="flex gap-3 p-2">
                         <Link :href="`/roles/${role.id}`">View</Link>
                         <Link :href="`/roles/${role.id}/edit`">Edit</Link>
@@ -64,7 +67,7 @@ function paginationLabel(label: string): string {
                     </td>
                 </tr>
                 <tr v-if="roles.data.length === 0">
-                    <td colspan="3" class="p-4 text-center text-gray-500">
+                    <td colspan="4" class="p-4 text-center text-muted-foreground">
                         No roles found.
                     </td>
                 </tr>

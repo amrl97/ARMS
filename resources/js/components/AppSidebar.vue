@@ -5,6 +5,7 @@ import {
     Building2,
     FolderGit2,
     LayoutGrid,
+    Settings2,
     ShieldCheck,
     UsersRound,
     SquareText,
@@ -48,9 +49,19 @@ const mainNavItems: NavItem[] = [
         icon: Building2,
     },
     {
+        title: 'Modules',
+        href: '/admin/configs',
+        icon: Settings2,
+    },
+    {
         title: 'Requests',
         href: '/requests',
         icon: SquareText,
+    },
+    {
+        title: 'Approvals',
+        href: '/approvals',
+        icon: ShieldCheck,
     },
 ];
 

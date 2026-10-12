@@ -9,7 +9,7 @@ use App\Models\Department;
 use App\Models\ModuleApprover;
 use App\Models\Role;
 use App\Models\User;
-use Illuminate\Database\Query\Builder as QueryBuilder;
+use App\Services\ModuleApproverResolver;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
@@ -53,17 +53,17 @@ class AccessModuleConfigController extends Controller
         return to_route('configs.edit', $config);
     }
 
-    public function show(AccessModuleConfig $config)
+    public function show(AccessModuleConfig $config, ModuleApproverResolver $resolver)
     {
         return Inertia::render('Admin/Configs/view', [
-            'config' => $this->loadApproverRules($config),
+            'config' => $this->loadApproverRules($config, $resolver),
         ]);
     }
 
-    public function edit(AccessModuleConfig $config)
+    public function edit(AccessModuleConfig $config, ModuleApproverResolver $resolver)
     {
         return Inertia::render('Admin/Configs/edit', [
-            'config' => $this->loadApproverRules($config),
+            'config' => $this->loadApproverRules($config, $resolver),
             ...$this->approverOptions(),
         ]);
     }
@@ -127,7 +127,10 @@ class AccessModuleConfigController extends Controller
         ];
     }
 
-    private function loadApproverRules(AccessModuleConfig $config): AccessModuleConfig
+    private function loadApproverRules(
+        AccessModuleConfig $config,
+        ModuleApproverResolver $resolver,
+    ): AccessModuleConfig
     {
         $config->load([
             'moduleApprovers.user.department',
@@ -136,48 +139,8 @@ class AccessModuleConfigController extends Controller
             'moduleApprovers.department',
         ]);
 
-        $rules = $config->moduleApprovers;
-        $directUserIds = $rules->whereNotNull('user_id')->pluck('user_id')->all();
-        $eligibleDirectUserIds = User::query()
-            ->whereKey($directUserIds)
-            ->where('is_active', true)
-            ->whereDoesntHave('roles', fn ($roles) => $roles->whereIn(
-                'roles.name',
-                User::RESTRICTED_INTERNAL_BENEFICIARY_ROLES,
-            ))
-            ->pluck('id')
-            ->all();
-
-        $roleRuleIds = $rules->whereNotNull('role_id')->pluck('id')->all();
-        $roleResolutionCounts = DB::table('module_approvers as module_rule')
-            ->join('roles as configured_role', 'configured_role.id', '=', 'module_rule.role_id')
-            ->join('user_has_roles', 'user_has_roles.role_id', '=', 'module_rule.role_id')
-            ->join('users', 'users.id', '=', 'user_has_roles.user_id')
-            ->whereIn('module_rule.id', $roleRuleIds)
-            ->where('users.is_active', true)
-            ->whereNotIn('configured_role.name', User::RESTRICTED_INTERNAL_BENEFICIARY_ROLES)
-            ->where(function (QueryBuilder $query): void {
-                $query->whereNull('module_rule.department_id')
-                    ->orWhereColumn('module_rule.department_id', 'users.department_id');
-            })
-            ->whereNotExists(function (QueryBuilder $query): void {
-                $query->selectRaw('1')
-                    ->from('user_has_roles as restricted_user_role')
-                    ->join('roles as restricted_role', 'restricted_role.id', '=', 'restricted_user_role.role_id')
-                    ->whereColumn('restricted_user_role.user_id', 'users.id')
-                    ->whereIn('restricted_role.name', User::RESTRICTED_INTERNAL_BENEFICIARY_ROLES);
-            })
-            ->groupBy('module_rule.id')
-            ->select('module_rule.id')
-            ->selectRaw('COUNT(DISTINCT users.id) AS resolved_user_count')
-            ->pluck('resolved_user_count', 'id');
-
-        foreach ($rules as $rule) {
-            $resolvedUserCount = $rule->user_id !== null
-                ? (int) in_array($rule->user_id, $eligibleDirectUserIds)
-                : (int) ($roleResolutionCounts[$rule->id] ?? 0);
-
-            $rule->setAttribute('resolved_user_count', $resolvedUserCount);
+        foreach ($config->moduleApprovers as $rule) {
+            $rule->setAttribute('resolved_user_count', $resolver->resolve($rule)->count());
         }
 
         return $config;

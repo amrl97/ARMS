@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class AccessRequestApproval extends Model
 {
@@ -14,12 +15,18 @@ class AccessRequestApproval extends Model
         'rejection_reason',
     ];
 
-    public function requestDetail()
+    /**
+     * @return BelongsTo<AccessRequestDetail, $this>
+     */
+    public function requestDetail(): BelongsTo
     {
         return $this->belongsTo(AccessRequestDetail::class, 'request_detail_id');
     }
 
-    public function approver()
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function approver(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approver_id');
     }

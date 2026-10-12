@@ -45,6 +45,29 @@ test('a valid module config can be created through the admin route', function ()
     ]);
 });
 
+test('module configuration rejects duplicate names and malformed settings', function () {
+    Department::create(['name' => 'Module Validation Department']);
+    $user = User::factory()->create();
+    AccessModuleConfig::create([
+        'module_name' => 'Existing Validated Module',
+        'max_approvers' => 0,
+        'required_approvals' => 0,
+        'is_active' => true,
+    ]);
+
+    $this->actingAs($user)
+        ->from('/admin/configs/create')
+        ->post('/admin/configs', [
+            'module_name' => 'Existing Validated Module',
+            'max_approvers' => 'many',
+            'required_approvals' => 1,
+            'is_active' => 'available',
+        ])
+        ->assertSessionHasErrors(['module_name', 'max_approvers', 'is_active']);
+
+    $this->assertDatabaseCount('access_module_configs', 1);
+});
+
 test('module configuration listing includes active states and paginates all modules', function () {
     Department::create(['name' => 'Module Configuration']);
     $user = User::factory()->create();

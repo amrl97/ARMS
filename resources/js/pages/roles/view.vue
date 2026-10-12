@@ -5,6 +5,7 @@ defineProps<{
     role: {
         id: number;
         name: string;
+        users_count: number;
         module_approvers_count: number;
         created_at: string;
         updated_at: string;
@@ -23,12 +24,14 @@ defineProps<{
                 <dd>{{ role.name }}</dd>
             </div>
 
-            <!--
             <div>
-                <dt class="font-medium">Module Approvers</dt>
+                <dt class="font-medium">Users</dt>
+                <dd>{{ role.users_count }}</dd>
+            </div>
+            <div>
+                <dt class="font-medium">Module approver rules</dt>
                 <dd>{{ role.module_approvers_count }}</dd>
             </div>
-            -->
 
             <div>
                 <dt class="font-medium">Created At</dt>

@@ -5,8 +5,8 @@ use App\Models\Role;
 use App\Models\User;
 use App\Services\RoleAssignmentService;
 use Illuminate\Database\QueryException;
-use Inertia\Testing\AssertableInertia as Assert;
 use Illuminate\Validation\ValidationException;
+use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
     $this->withoutVite();
@@ -21,6 +21,26 @@ function userManagementFixtures(): array
     ];
 }
 
+test('user accounts are listed with pagination and are managed through activation status', function () {
+    [$department, $staff] = userManagementFixtures();
+    $actingUser = User::factory()->create(['department_id' => $department->id]);
+    $actingUser->roles()->attach($staff);
+
+    $this->actingAs($actingUser)
+        ->get(route('users.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Admin/users/index')
+            ->has('users.data', 1)
+            ->where('users.data.0.is_active', true)
+            ->where('users.data.0.department.name', $department->name)
+            ->where('users.data.0.roles.0.name', $staff->name)
+            ->has('users.links'));
+
+    $this->delete("/users/{$actingUser->id}")->assertMethodNotAllowed();
+    $this->assertDatabaseHas('users', ['id' => $actingUser->id]);
+});
+
 test('a user can only be created with one department and at least one role', function () {
     [$department, $staff, $admin] = userManagementFixtures();
     $actingUser = User::factory()->create(['department_id' => $department->id]);
@@ -34,14 +54,14 @@ test('a user can only be created with one department and at least one role', fun
             ->has('roles', 2));
 
     $this->post(route('users.store'), [
-            'fullname' => 'New User',
-            'email' => 'new.user@example.com',
-            'password' => 'password123',
-            'password_confirmation' => 'password123',
-            'department_id' => $department->id,
-            'role_ids' => [$staff->id, $admin->id],
-            'is_active' => 1,
-        ])
+        'fullname' => 'New User',
+        'email' => 'new.user@example.com',
+        'password' => 'password123',
+        'password_confirmation' => 'password123',
+        'department_id' => $department->id,
+        'role_ids' => [$staff->id, $admin->id],
+        'is_active' => 1,
+    ])
         ->assertRedirect(route('users.index'));
 
     $createdUser = User::query()->where('email', 'new.user@example.com')->firstOrFail();
@@ -79,6 +99,93 @@ test('user creation rejects a missing department or an empty role assignment', f
 
     $this->assertDatabaseMissing('users', ['email' => 'no.department@example.com']);
     $this->assertDatabaseMissing('users', ['email' => 'no.role@example.com']);
+});
+
+test('user form request validates email, password confirmation, and active status', function () {
+    [$department, $staff] = userManagementFixtures();
+    $existingUser = User::factory()->create([
+        'department_id' => $department->id,
+        'email' => 'existing.user@example.com',
+    ]);
+    $actingUser = User::factory()->create(['department_id' => $department->id]);
+
+    $this->actingAs($actingUser)
+        ->from(route('users.create'))
+        ->post(route('users.store'), [
+            'fullname' => 'Invalid User',
+            'email' => 'not-an-email',
+            'password' => 'password123',
+            'password_confirmation' => 'different-password',
+            'department_id' => $department->id,
+            'role_ids' => [$staff->id],
+            'is_active' => 'enabled',
+        ])
+        ->assertSessionHasErrors(['email', 'password', 'is_active']);
+
+    $this->from(route('users.edit', $existingUser))
+        ->put(route('users.update', $existingUser), [
+            'fullname' => $existingUser->fullname,
+            'email' => 'not-an-email',
+            'password' => '',
+            'password_confirmation' => '',
+            'department_id' => $department->id,
+            'role_ids' => [$staff->id],
+            'is_active' => 1,
+        ])
+        ->assertSessionHasErrors('email');
+});
+
+test('only Admin users may create inactive users or deactivate active users', function () {
+    [$department, $staff, $admin] = userManagementFixtures();
+    $ordinaryUser = User::factory()->create(['department_id' => $department->id]);
+    $adminUser = User::factory()->create(['department_id' => $department->id]);
+    $adminUser->roles()->attach($admin);
+    $targetUser = User::factory()->create(['department_id' => $department->id]);
+    $targetUser->roles()->attach($staff);
+
+    $newInactiveUser = [
+        'fullname' => 'Inactive New User',
+        'email' => 'inactive.new@example.com',
+        'password' => 'password123',
+        'password_confirmation' => 'password123',
+        'department_id' => $department->id,
+        'role_ids' => [$staff->id],
+        'is_active' => 0,
+    ];
+
+    $this->actingAs($ordinaryUser)
+        ->post(route('users.store'), $newInactiveUser)
+        ->assertForbidden();
+
+    $this->put(route('users.update', $targetUser), [
+        'fullname' => $targetUser->fullname,
+        'email' => $targetUser->email,
+        'password' => '',
+        'password_confirmation' => '',
+        'department_id' => $department->id,
+        'role_ids' => [$staff->id],
+        'is_active' => 0,
+    ])->assertForbidden();
+
+    $this->assertDatabaseMissing('users', ['email' => 'inactive.new@example.com']);
+    $this->assertDatabaseHas('users', ['id' => $targetUser->id, 'is_active' => true]);
+
+    $this->actingAs($adminUser)
+        ->post(route('users.store'), $newInactiveUser)
+        ->assertRedirect(route('users.index'));
+
+    $this->put(route('users.update', $targetUser), [
+        'fullname' => $targetUser->fullname,
+        'email' => $targetUser->email,
+        'password' => '',
+        'password_confirmation' => '',
+        'department_id' => $department->id,
+        'role_ids' => [$staff->id],
+        'is_active' => 0,
+    ])->assertRedirect(route('users.index'));
+
+    $this->assertDatabaseHas('users', ['email' => 'inactive.new@example.com', 'is_active' => false]);
+    $this->assertDatabaseHas('users', ['id' => $targetUser->id, 'is_active' => false]);
 });
 
 test('a user update cannot remove all roles and can change the department', function () {

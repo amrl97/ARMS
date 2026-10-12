@@ -20,7 +20,8 @@ test('an authenticated user can manage departments', function () {
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('departments/index')
-            ->has('departments.data', 1));
+            ->has('departments.data', 1)
+            ->where('departments.data.0.users_count', 1));
 
     $this->get(route('departments.create'))
         ->assertOk()

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class AccessModuleConfig extends Model
 {
@@ -28,12 +29,19 @@ class AccessModuleConfig extends Model
         ];
     }
 
+    /**
+     * @param  Builder<AccessModuleConfig>  $query
+     * @return Builder<AccessModuleConfig>
+     */
     public function scopeAvailableForRequests(Builder $query): Builder
     {
         return $query->where('is_active', true);
     }
 
-    public function moduleApprovers()
+    /**
+     * @return HasMany<ModuleApprover, $this>
+     */
+    public function moduleApprovers(): HasMany
     {
         return $this->hasMany(ModuleApprover::class, 'module_id');
     }

@@ -1,6 +1,9 @@
 <?php
 
+use App\Enums\AccessType;
+use App\Enums\RequestPriority;
 use App\Http\Requests\StoreAccessRequestRequest;
+use App\Models\AccessModuleConfig;
 use App\Models\Department;
 use App\Models\Role;
 use App\Models\User;
@@ -36,6 +39,30 @@ function requestEligibilityFixtures(): array
     ];
 }
 
+function validRequestEligibilityPayload(array $overrides = []): array
+{
+    static $sequence = 0;
+    $sequence++;
+    $module = AccessModuleConfig::create([
+        'module_name' => "Eligible Request Module {$sequence}",
+        'is_active' => true,
+    ]);
+
+    return array_replace([
+        'beneficiary_type' => 'self',
+        'internal_beneficiary' => null,
+        'external_beneficiary' => null,
+        'module_lines' => [[
+            'module_id' => $module->id,
+            'access_type' => AccessType::NewStaff->value,
+            'priority' => RequestPriority::Medium->value,
+            'justification' => null,
+            'start_date' => null,
+            'end_date' => null,
+        ]],
+    ], $overrides);
+}
+
 test('an Admin cannot submit an access request', function () {
     [, $adminRole] = requestEligibilityFixtures();
     $admin = makeRequestEligibilityUser('Admin requester');
@@ -55,11 +82,158 @@ test('a regular user can submit a self-request or request for an eligible intern
     $beneficiary = makeRequestEligibilityUser('Eligible beneficiary');
 
     $this->actingAs($requester)
-        ->postJson('/_test/access-requests')
+        ->postJson('/_test/access-requests', validRequestEligibilityPayload())
         ->assertNoContent();
 
-    $this->postJson('/_test/access-requests', ['internal_beneficiary' => $beneficiary->id])
+    $this->postJson('/_test/access-requests', validRequestEligibilityPayload([
+        'beneficiary_type' => 'internal',
+        'internal_beneficiary' => $beneficiary->id,
+    ]))
         ->assertNoContent();
+});
+
+test('request module lines accept active modules and reject inactive or unavailable modules', function () {
+    [$staffRole] = requestEligibilityFixtures();
+    $requester = makeRequestEligibilityUser('Staff requester');
+    $requester->roles()->attach($staffRole);
+    $activeModule = AccessModuleConfig::create([
+        'module_name' => 'Active Request Module',
+        'is_active' => true,
+    ]);
+    $inactiveModule = AccessModuleConfig::create([
+        'module_name' => 'Inactive Request Module',
+        'is_active' => false,
+    ]);
+
+    $this->actingAs($requester)
+        ->postJson('/_test/access-requests', [
+            'beneficiary_type' => 'self',
+            'module_lines' => [[
+                'module_id' => $activeModule->id,
+                'access_type' => AccessType::NewStaff->value,
+                'priority' => RequestPriority::Medium->value,
+            ]],
+        ])
+        ->assertNoContent();
+
+    $this->postJson('/_test/access-requests', [
+        'module_lines' => [['module_id' => $inactiveModule->id]],
+    ])->assertUnprocessable()
+        ->assertJsonValidationErrors('module_lines.0.module_id')
+        ->assertSeeText('A selected module is inactive or unavailable. Choose an active module or remove it from the request.');
+
+    $this->postJson('/_test/access-requests', [
+        'module_lines' => [['module_id' => 999999]],
+    ])->assertUnprocessable()
+        ->assertJsonValidationErrors('module_lines.0.module_id');
+});
+
+test('request module lines reject invalid access types, priorities, and date formats', function () {
+    [$staffRole] = requestEligibilityFixtures();
+    $requester = makeRequestEligibilityUser('Invalid request values requester');
+    $requester->roles()->attach($staffRole);
+
+    $invalidLines = [
+        'access type' => ['value' => 'Termination/Revoked Access', 'path' => 'access_type'],
+        'priority' => ['value' => 'Urgent', 'path' => 'priority'],
+        'start date' => ['value' => '12/10/2026', 'path' => 'start_date'],
+        'end date' => ['value' => 'not-a-date', 'path' => 'end_date'],
+    ];
+
+    foreach ($invalidLines as $invalidValue) {
+        $payload = validRequestEligibilityPayload();
+        $payload['module_lines'][0][$invalidValue['path']] = $invalidValue['value'];
+
+        $this->actingAs($requester)
+            ->postJson('/_test/access-requests', $payload)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors("module_lines.0.{$invalidValue['path']}");
+    }
+});
+
+test('Vendor/3rd Party access type requires an external beneficiary', function () {
+    [$staffRole] = requestEligibilityFixtures();
+    $requester = makeRequestEligibilityUser('Vendor access requester');
+    $requester->roles()->attach($staffRole);
+    $payload = validRequestEligibilityPayload();
+    $payload['module_lines'][0]['access_type'] = AccessType::VendorThirdParty->value;
+
+    $this->actingAs($requester)
+        ->postJson('/_test/access-requests', $payload)
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('module_lines.0.access_type');
+
+    $payload['beneficiary_type'] = 'external';
+    $payload['external_beneficiary'] = 'Vendor Ltd';
+
+    $this->postJson('/_test/access-requests', $payload)->assertNoContent();
+});
+
+test('request module line end dates cannot be before start dates', function () {
+    [$staffRole] = requestEligibilityFixtures();
+    $requester = makeRequestEligibilityUser('Staff requester');
+    $requester->roles()->attach($staffRole);
+    $module = AccessModuleConfig::create([
+        'module_name' => 'Date Validation Module',
+        'is_active' => true,
+    ]);
+
+    $this->actingAs($requester)
+        ->postJson('/_test/access-requests', [
+            'beneficiary_type' => 'self',
+            'module_lines' => [[
+                'module_id' => $module->id,
+                'access_type' => AccessType::Temporary->value,
+                'priority' => RequestPriority::Medium->value,
+                'start_date' => '2026-10-12',
+                'end_date' => '2026-10-12',
+            ]],
+        ])
+        ->assertNoContent();
+
+    $this->postJson('/_test/access-requests', [
+        'beneficiary_type' => 'self',
+        'module_lines' => [[
+            'module_id' => $module->id,
+            'access_type' => AccessType::Temporary->value,
+            'priority' => RequestPriority::Medium->value,
+            'start_date' => '2026-10-12',
+            'end_date' => '2026-10-13',
+        ]],
+    ])->assertNoContent();
+
+    $this->postJson('/_test/access-requests', [
+        'beneficiary_type' => 'self',
+        'module_lines' => [[
+            'module_id' => $module->id,
+            'access_type' => AccessType::Temporary->value,
+            'priority' => RequestPriority::Medium->value,
+            'end_date' => '2026-10-12',
+        ]],
+    ])->assertNoContent();
+
+    $this->postJson('/_test/access-requests', [
+        'beneficiary_type' => 'self',
+        'module_lines' => [[
+            'module_id' => $module->id,
+            'access_type' => AccessType::Temporary->value,
+            'priority' => RequestPriority::Medium->value,
+            'start_date' => '2026-10-12',
+        ]],
+    ])->assertNoContent();
+
+    $this->postJson('/_test/access-requests', [
+        'beneficiary_type' => 'self',
+        'module_lines' => [[
+            'module_id' => $module->id,
+            'access_type' => AccessType::Temporary->value,
+            'priority' => RequestPriority::Medium->value,
+            'start_date' => '2026-10-13',
+            'end_date' => '2026-10-12',
+        ]],
+    ])->assertUnprocessable()
+        ->assertJsonValidationErrors('module_lines.0.end_date')
+        ->assertSeeText('The end date must be on or after the start date.');
 });
 
 test('a Super Admin can make a self-request but cannot be an internal beneficiary', function () {
@@ -69,7 +243,7 @@ test('a Super Admin can make a self-request but cannot be an internal beneficiar
     $requester = makeRequestEligibilityUser('Ordinary requester');
 
     $this->actingAs($superAdmin)
-        ->postJson('/_test/access-requests')
+        ->postJson('/_test/access-requests', validRequestEligibilityPayload())
         ->assertNoContent();
 
     $this->actingAs($requester)
@@ -118,7 +292,7 @@ test('request beneficiary validation rejects self-reference and invalid benefici
 });
 
 test('request beneficiary validation rejects a blank external beneficiary name', function () {
-    $request = new StoreAccessRequestRequest();
+    $request = new StoreAccessRequestRequest;
     $request->merge(['external_beneficiary' => '   ']);
     $validator = Validator::make($request->all(), $request->rules());
 
@@ -149,12 +323,32 @@ test('the request create page offers only eligible internal beneficiaries', func
     $superAdmin = User::factory()->create(['department_id' => $department->id]);
     $superAdmin->roles()->attach($superAdminRole);
 
+    $activeModule = AccessModuleConfig::create([
+        'module_name' => 'Active Request Module',
+        'is_active' => true,
+    ]);
+    AccessModuleConfig::create([
+        'module_name' => 'Inactive Request Module',
+        'is_active' => false,
+    ]);
+
     $this->actingAs($requester)
         ->get(route('requests.create'))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->component('requests/create')
+            ->where('accessTypes', array_map(
+                static fn (AccessType $accessType): string => $accessType->value,
+                AccessType::cases(),
+            ))
+            ->has('modules', 1)
+            ->where('modules.0.id', $activeModule->id)
+            ->where('modules.0.module_name', 'Active Request Module')
             ->has('internalBeneficiaries', 1)
             ->where('internalBeneficiaries.0.id', $eligible->id)
-            ->where('internalBeneficiaries.0.fullname', 'Eligible Person'));
+            ->where('internalBeneficiaries.0.fullname', 'Eligible Person')
+            ->where('priorities', array_map(
+                static fn (RequestPriority $priority): string => $priority->value,
+                RequestPriority::cases(),
+            )));
 });

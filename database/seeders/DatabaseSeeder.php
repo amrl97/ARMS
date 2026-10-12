@@ -22,6 +22,8 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $Department = 
+        Department::firstOrCreate(['name' => 'Corporate Strategy and Planning']);
+        Department::firstOrCreate(['name' => 'Fleet Management']);
         Department::firstOrCreate(['name' => 'Information Technology']);
         Department::firstOrCreate(['name' => 'Human Resources and Administration']);
         Department::firstOrCreate(['name' => 'Finance']);
@@ -34,15 +36,17 @@ class DatabaseSeeder extends Seeder
         Department::firstOrCreate(['name' => 'MD\'s Office']);
         Department::firstOrCreate(['name' => 'Chartering']);
 
-        $this->call(StaffUsersSeeder::class);
-
         collect([
             'Super Admin',
             'Admin',
+            'General Manager',
             'Head of Department',
-            'Staff',
+            'Manager',
             'Senior Executive',
+            'Staff',
         ])->each(fn (string $name) => Role::firstOrCreate(['name' => $name]));
+
+        $this->call(StaffUsersSeeder::class);
 
         AccessModuleConfig::firstOrCreate(['module_name' => 'Sangfor EDR Portal']);
         AccessModuleConfig::firstOrCreate(
@@ -84,5 +88,7 @@ class DatabaseSeeder extends Seeder
                 app(RoleAssignmentService::class)->assignRoles($user, [$role->id]);
             });
         }
+
+        $this->call(OrganizationalRoleAssignmentsSeeder::class);
     }
 }
