@@ -84,6 +84,7 @@ test('approver inbox contains only pending approvals assigned to the signed-in u
             ->where('moduleApprovals.data.0.step', ApprovalStep::Module->value)
             ->where('moduleApprovals.data.0.module', 'Inbox Module')
             ->where('moduleApprovals.data.0.accessType', AccessType::Privilege->value)
+            ->where('moduleApprovals.data.0.requestType', 'Internal User')
             ->where('moduleApprovals.data.0.priority', RequestPriority::High->value)
             ->where('moduleApprovals.data.0.justification', 'Requires elevated access for support duties.')
             ->where('moduleApprovals.data.0.startDate', '2026-11-01')
