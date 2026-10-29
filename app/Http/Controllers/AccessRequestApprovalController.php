@@ -55,6 +55,11 @@ class AccessRequestApprovalController extends Controller
                 'step' => $approval->step,
                 'module' => $detail->module->module_name,
                 'accessType' => $detail->access_type,
+                'requestType' => $accessRequest->internal_beneficiary !== null
+                    ? 'Internal User'
+                    : ($accessRequest->external_beneficiary !== null
+                        ? 'Vendor/3rd Party'
+                        : 'Self'),
                 'priority' => $detail->priority,
                 'justification' => $detail->justification,
                 'startDate' => $detail->start_date,

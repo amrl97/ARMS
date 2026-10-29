@@ -124,7 +124,7 @@ function formatStatus(status: string): string {
 
                     <StepperSeparator
                         v-if="index < approval.history.length - 1"
-                        class="bg-muted absolute top-4 right-[calc(-50%+20px)] left-[calc(50%+20px)] block h-0.5 shrink-0 rounded-full"
+                        class="bg-border absolute top-4 right-[calc(-50%+20px)] left-[calc(50%+20px)] block h-0.5 shrink-0 rounded-full"
                         :class="{
                             'bg-emerald-600': item.status === 'approved',
                             'bg-destructive': item.status === 'rejected',

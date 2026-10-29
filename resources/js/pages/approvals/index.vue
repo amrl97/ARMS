@@ -103,9 +103,8 @@ defineProps<{
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Module</TableHead>
-                                    <TableHead>Access</TableHead>
+                                    <TableHead>Request Type</TableHead>
                                     <TableHead>Requester</TableHead>
-                                    <TableHead>Beneficiary</TableHead>
                                     <TableHead>Priority</TableHead>
                                     <TableHead>Actions</TableHead>
                                 </TableRow>
@@ -144,14 +143,11 @@ defineProps<{
                                         </p>
                                     </TableCell>
                                     <TableCell>
-                                        {{ approval.accessType }}
+                                        {{ approval.requestType }}
                                     </TableCell>
                                     <TableCell>{{
                                         approval.requester
                                     }}</TableCell>
-                                    <TableCell>
-                                        {{ approval.beneficiary }}
-                                    </TableCell>
                                     <TableCell>
                                         <Badge
                                             :variant="
@@ -246,9 +242,8 @@ defineProps<{
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Module</TableHead>
-                                    <TableHead>Access</TableHead>
+                                    <TableHead>Request Type</TableHead>
                                     <TableHead>Requester</TableHead>
-                                    <TableHead>Beneficiary</TableHead>
                                     <TableHead>Priority</TableHead>
                                     <TableHead>Actions</TableHead>
                                 </TableRow>
@@ -287,14 +282,11 @@ defineProps<{
                                         </p>
                                     </TableCell>
                                     <TableCell>
-                                        {{ approval.accessType }}
+                                        {{ approval.requestType }}
                                     </TableCell>
                                     <TableCell>{{
                                         approval.requester
                                     }}</TableCell>
-                                    <TableCell>
-                                        {{ approval.beneficiary }}
-                                    </TableCell>
                                     <TableCell>
                                         <Badge
                                             :variant="

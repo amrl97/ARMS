@@ -4,6 +4,8 @@ export type ApprovalInboxItem = {
     step: 'module' | 'final';
     module: string;
     accessType: string;
+    requestType: 'Self' | 'Internal User' | 'Vendor/3rd Party';
+    requestStatus: 'In Progress' | 'On Hold' | 'Completed';
     priority: 'Low' | 'Medium' | 'High';
     justification: string | null;
     startDate: string | null;

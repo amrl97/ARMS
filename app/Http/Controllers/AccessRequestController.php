@@ -98,7 +98,7 @@ class AccessRequestController extends Controller
             'message' => 'Access request submitted successfully.',
         ]);
 
-        return redirect()->route('requests.create');
+        return redirect()->route('requests.index');
     }
 
     public function cancel(
