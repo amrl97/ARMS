@@ -132,6 +132,65 @@ test('submitting a request stores its header, details, module approvals, and pri
     $this->assertDatabaseCount('access_request_attachments', 2);
 });
 
+test('request module fields are stored independently and optional values may be omitted', function () {
+    $requester = submissionTestUser('Per-line fields requester');
+    submissionTestAdmin();
+    $vendorModule = AccessModuleConfig::create([
+        'module_name' => 'Vendor Per-line Module',
+        'max_approvers' => 0,
+        'required_approvals' => 0,
+        'is_active' => true,
+    ]);
+    $temporaryModule = AccessModuleConfig::create([
+        'module_name' => 'Temporary Per-line Module',
+        'max_approvers' => 0,
+        'required_approvals' => 0,
+        'is_active' => true,
+    ]);
+
+    $this->actingAs($requester)
+        ->post(route('requests.store'), submissionTestPayload([
+            [
+                'module_id' => $vendorModule->id,
+                'access_type' => AccessType::VendorThirdParty->value,
+                'priority' => RequestPriority::High->value,
+                'justification' => 'Vendor support access',
+                'start_date' => '2026-11-05',
+                'end_date' => '2026-11-20',
+            ],
+            [
+                'module_id' => $temporaryModule->id,
+                'access_type' => AccessType::Temporary->value,
+                'priority' => RequestPriority::Low->value,
+                'justification' => null,
+                'start_date' => null,
+                'end_date' => null,
+            ],
+        ], [
+            'beneficiary_type' => 'external',
+            'external_beneficiary' => 'Example Vendor',
+        ]))
+        ->assertRedirect(route('requests.create'));
+
+    $details = AccessRequest::firstOrFail()->details()->get()->keyBy('module_id');
+    $vendorDetail = $details->get($vendorModule->id);
+    $temporaryDetail = $details->get($temporaryModule->id);
+
+    expect($details)->toHaveCount(2)
+        ->and($vendorDetail)->not->toBeNull()
+        ->and($vendorDetail->access_type)->toBe(AccessType::VendorThirdParty->value)
+        ->and($vendorDetail->priority)->toBe(RequestPriority::High->value)
+        ->and($vendorDetail->justification)->toBe('Vendor support access')
+        ->and($vendorDetail->start_date)->toBe('2026-11-05')
+        ->and($vendorDetail->end_date)->toBe('2026-11-20')
+        ->and($temporaryDetail)->not->toBeNull()
+        ->and($temporaryDetail->access_type)->toBe(AccessType::Temporary->value)
+        ->and($temporaryDetail->priority)->toBe(RequestPriority::Low->value)
+        ->and($temporaryDetail->justification)->toBeNull()
+        ->and($temporaryDetail->start_date)->toBeNull()
+        ->and($temporaryDetail->end_date)->toBeNull();
+});
+
 test('module lines progress independently and only affect their own detail status', function () {
     $requester = submissionTestUser('Independent line requester');
     $moduleApprover = submissionTestUser('Independent module approver');

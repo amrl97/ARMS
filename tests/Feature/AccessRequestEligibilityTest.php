@@ -260,6 +260,8 @@ test('Admin and Super Admin users cannot be internal beneficiaries', function ()
     $admin->roles()->attach($adminRole);
     $superAdmin = makeRequestEligibilityUser('Super Admin beneficiary');
     $superAdmin->roles()->attach($superAdminRole);
+    $mixedRoleUser = makeRequestEligibilityUser('Restricted role with Staff');
+    $mixedRoleUser->roles()->attach([$staffRole->id, $adminRole->id]);
 
     $this->actingAs($requester)
         ->postJson('/_test/access-requests', ['internal_beneficiary' => $admin->id])
@@ -270,8 +272,29 @@ test('Admin and Super Admin users cannot be internal beneficiaries', function ()
         ->assertUnprocessable()
         ->assertJsonValidationErrors('internal_beneficiary');
 
+    $this->postJson('/_test/access-requests', ['internal_beneficiary' => $mixedRoleUser->id])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('internal_beneficiary');
+
     expect(app(AccessRequestPolicy::class)->selectInternalBeneficiary($requester, $admin))->toBeFalse()
-        ->and(app(AccessRequestPolicy::class)->selectInternalBeneficiary($requester, $superAdmin))->toBeFalse();
+        ->and(app(AccessRequestPolicy::class)->selectInternalBeneficiary($requester, $superAdmin))->toBeFalse()
+        ->and(app(AccessRequestPolicy::class)->selectInternalBeneficiary($requester, $mixedRoleUser))->toBeFalse();
+});
+
+test('inactive users cannot be selected as internal beneficiaries', function () {
+    [$staffRole] = requestEligibilityFixtures();
+    $requester = makeRequestEligibilityUser('Active requester');
+    $requester->roles()->attach($staffRole);
+    $inactive = makeRequestEligibilityUser('Inactive beneficiary');
+    $inactive->forceFill(['is_active' => false])->save();
+    $inactive->roles()->attach($staffRole);
+
+    $this->actingAs($requester)
+        ->postJson('/_test/access-requests', ['internal_beneficiary' => $inactive->id])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('internal_beneficiary');
+
+    expect(app(AccessRequestPolicy::class)->selectInternalBeneficiary($requester, $inactive))->toBeFalse();
 });
 
 test('request beneficiary validation rejects self-reference and invalid beneficiary combinations', function () {
@@ -322,6 +345,17 @@ test('the request create page offers only eligible internal beneficiaries', func
     $admin->roles()->attach($adminRole);
     $superAdmin = User::factory()->create(['department_id' => $department->id]);
     $superAdmin->roles()->attach($superAdminRole);
+    $inactive = User::factory()->create([
+        'fullname' => 'Inactive Person',
+        'department_id' => $department->id,
+        'is_active' => false,
+    ]);
+    $inactive->roles()->attach($staffRole);
+    $mixedRole = User::factory()->create([
+        'fullname' => 'Restricted Role Person',
+        'department_id' => $department->id,
+    ]);
+    $mixedRole->roles()->attach([$staffRole->id, $adminRole->id]);
 
     $activeModule = AccessModuleConfig::create([
         'module_name' => 'Active Request Module',
@@ -347,6 +381,8 @@ test('the request create page offers only eligible internal beneficiaries', func
             ->has('internalBeneficiaries', 1)
             ->where('internalBeneficiaries.0.id', $eligible->id)
             ->where('internalBeneficiaries.0.fullname', 'Eligible Person')
+            ->missing('internalBeneficiaries.1')
+            ->missing('internalBeneficiaries.2')
             ->where('priorities', array_map(
                 static fn (RequestPriority $priority): string => $priority->value,
                 RequestPriority::cases(),

@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Route;
 Route::inertia('/', 'auth/Login')->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::inertia('home', 'Home')->name('app.home');
     Route::inertia('dashboard', 'Dashboard')->name('dashboard');
 });
 
@@ -27,8 +28,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('requests', [AccessRequestController::class, 'index'])->name('requests.index');
     Route::get('requests/create', [AccessRequestController::class, 'create'])->name('requests.create');
     Route::post('requests', [AccessRequestController::class, 'store'])->name('requests.store');
+    Route::get('requests/{accessRequest}', [AccessRequestController::class, 'show'])->name('requests.show');
+    Route::get(
+        'requests/{accessRequest}/attachments/{attachment}',
+        [AccessRequestController::class, 'downloadAttachment'],
+    )->name('requests.attachments.download');
     Route::post('requests/{accessRequest}/cancel', [AccessRequestController::class, 'cancel'])->name('requests.cancel');
     Route::get('approvals', [AccessRequestApprovalController::class, 'index'])->name('approvals.index');
+    Route::get('approvals/{approval}', [AccessRequestApprovalController::class, 'show'])->name('approvals.show');
     Route::post('approvals/{approval}/decision', [AccessRequestApprovalController::class, 'decide'])
         ->name('approvals.decide');
 });

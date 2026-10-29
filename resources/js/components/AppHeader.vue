@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { BookOpen, Folder, LayoutGrid, Menu, Search } from '@lucide/vue';
+import {
+    BookOpen,
+    ChartNoAxesCombined,
+    Folder,
+    House,
+    Menu,
+    Search,
+} from '@lucide/vue';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
@@ -55,10 +62,14 @@ const activeItemStyles =
 
 const mainNavItems: NavItem[] = [
     {
+        title: 'Home',
+        href: '/home',
+        icon: House,
+    },
+    {
         title: 'Dashboard',
         href: dashboard(),
-        icon: LayoutGrid,
-        
+        icon: ChartNoAxesCombined,
     },
 ];
 
@@ -78,7 +89,7 @@ const rightNavItems: NavItem[] = [
 
 <template>
     <div>
-        <div class="border-b border-sidebar-border/80">
+        <div class="border-sidebar-border/80 border-b">
             <div class="mx-auto flex h-16 items-center px-4 md:max-w-7xl">
                 <!-- Mobile Menu -->
                 <div class="lg:hidden">
@@ -109,7 +120,7 @@ const rightNavItems: NavItem[] = [
                                         v-for="item in mainNavItems"
                                         :key="item.title"
                                         :href="item.href"
-                                        class="flex items-center gap-x-3 rounded-lg px-3 py-2 text-sm font-medium hover:bg-accent"
+                                        class="hover:bg-accent flex items-center gap-x-3 rounded-lg px-3 py-2 text-sm font-medium"
                                         :class="
                                             whenCurrentUrl(
                                                 item.href,
@@ -147,7 +158,7 @@ const rightNavItems: NavItem[] = [
                     </Sheet>
                 </div>
 
-                <Link :href="dashboard()" class="flex items-center gap-x-2">
+                <Link href="/home" class="flex items-center gap-x-2">
                     <AppLogo />
                 </Link>
 
@@ -244,7 +255,7 @@ const rightNavItems: NavItem[] = [
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                class="relative size-10 w-auto rounded-full p-1 focus-within:ring-2 focus-within:ring-primary"
+                                class="focus-within:ring-primary relative size-10 w-auto rounded-full p-1 focus-within:ring-2"
                             >
                                 <Avatar
                                     class="size-8 overflow-hidden rounded-full"
@@ -272,7 +283,7 @@ const rightNavItems: NavItem[] = [
 
         <div
             v-if="props.breadcrumbs.length > 1"
-            class="flex w-full border-b border-sidebar-border/70"
+            class="border-sidebar-border/70 flex w-full border-b"
         >
             <div
                 class="mx-auto flex h-12 w-full items-center justify-start px-4 text-neutral-500 md:max-w-7xl"

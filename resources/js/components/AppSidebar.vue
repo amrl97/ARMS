@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
+import { computed } from 'vue';
+import { Link, usePage } from '@inertiajs/vue3';
 import {
-    BookOpen,
     Building2,
-    FolderGit2,
+    ChartNoAxesCombined,
+    House,
     LayoutGrid,
     Settings2,
     ShieldCheck,
@@ -11,7 +12,6 @@ import {
     SquareText,
 } from '@lucide/vue';
 import AppLogo from '@/components/AppLogo.vue';
-import NavFooter from '@/components/NavFooter.vue';
 import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
 import {
@@ -27,65 +27,74 @@ import { dashboard } from '@/routes';
 import users from '@/routes/users';
 import type { NavItem } from '@/types';
 
-const mainNavItems: NavItem[] = [
-    {
-        title: 'Dashboards',
-        href: dashboard(),
-        icon: LayoutGrid,
-    },
-    {
-        title: 'Users',
-        href: users.index(),
-        icon: UsersRound,
-    },
-    {
-        title: 'Roles',
-        href: '/roles',
-        icon: ShieldCheck,
-    },
-    {
-        title: 'Departments',
-        href: '/departments',
-        icon: Building2,
-    },
-    {
-        title: 'Modules',
-        href: '/admin/configs',
-        icon: Settings2,
-    },
-    {
-        title: 'Requests',
-        href: '/requests',
-        icon: SquareText,
-    },
-    {
-        title: 'Approvals',
-        href: '/approvals',
-        icon: ShieldCheck,
-    },
-];
+const page = usePage();
+const mainNavItems = computed<NavItem[]>(() => {
+    const roles = page.props.auth.roles;
+    const isAdmin = roles.includes('Super Admin') || roles.includes('Admin');
+    const isApprover = roles.includes('Approver') || page.props.auth.canApprove;
+    const items: NavItem[] = [
+        { title: 'Home', href: '/home', icon: House },
+        {
+            title: 'Dashboard',
+            href: dashboard(),
+            icon: ChartNoAxesCombined,
+        },
+    ];
 
-const footerNavItems: NavItem[] = [
-    {
-        title: 'Repository',
-        href: 'https://github.com/laravel/vue-starter-kit',
-        icon: FolderGit2,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#vue',
-        icon: BookOpen,
-    },
-];
+    if (isAdmin) {
+        items.push(
+            {
+                title: 'Users',
+                href: users.index(),
+                icon: UsersRound,
+            },
+            {
+                title: 'Roles',
+                href: '/roles',
+                icon: ShieldCheck,
+            },
+            {
+                title: 'Departments',
+                href: '/departments',
+                icon: Building2,
+            },
+            {
+                title: 'Configs',
+                href: '/admin/configs',
+                icon: Settings2,
+            },
+        );
+    } else {
+        items.push({
+            title: 'Requests',
+            href: '/requests',
+            icon: SquareText,
+        });
+    }
+
+    if (isAdmin || isApprover) {
+        items.push({
+            title: 'Approvals',
+            href: '/approvals',
+            icon: ShieldCheck,
+        });
+    }
+
+    return items;
+});
 </script>
 
 <template>
-    <Sidebar collapsible="icon" variant="inset">
-        <SidebarHeader>
+    <Sidebar collapsible="icon" variant="inset" class="border-0">
+        <SidebarHeader class="px-3 pt-5 pb-3">
             <SidebarMenu>
                 <SidebarMenuItem>
-                    <SidebarMenuButton size="lg" as-child>
-                        <Link :href="dashboard()">
+                    <SidebarMenuButton
+                        size="lg"
+                        as-child
+                        class="hover:bg-sidebar-accent rounded-xl px-2"
+                    >
+                        <Link href="/home">
                             <AppLogo />
                         </Link>
                     </SidebarMenuButton>
@@ -97,8 +106,7 @@ const footerNavItems: NavItem[] = [
             <NavMain :items="mainNavItems" />
         </SidebarContent>
 
-        <SidebarFooter>
-            <NavFooter :items="footerNavItems" />
+        <SidebarFooter class="px-3 pb-4">
             <NavUser />
         </SidebarFooter>
     </Sidebar>

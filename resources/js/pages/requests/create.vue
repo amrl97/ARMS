@@ -2,9 +2,18 @@
 import { Head, Link, useForm } from '@inertiajs/vue3';
 
 type BeneficiaryType = 'self' | 'internal' | 'external';
+type AccessTypeValue = 'New Staff' | 'Privilege' | 'Temporary' | 'Vendor/3rd Party';
+type RequestPriorityValue = 'Low' | 'Medium' | 'High';
+type ModuleLineField =
+    | 'module_id'
+    | 'access_type'
+    | 'priority'
+    | 'justification'
+    | 'start_date'
+    | 'end_date';
 
 defineProps<{
-    accessTypes: string[];
+    accessTypes: AccessTypeValue[];
     modules: Array<{
         id: number;
         module_name: string;
@@ -14,7 +23,7 @@ defineProps<{
         fullname: string;
         email: string;
     }>;
-    priorities: string[];
+    priorities: RequestPriorityValue[];
 }>();
 
 const form = useForm({
@@ -86,6 +95,10 @@ function isModuleSelected(moduleId: number, lineIndex: number): boolean {
             index !== lineIndex && String(line.module_id) === String(moduleId),
     );
 }
+
+function moduleLineError(index: number, field: ModuleLineField): string | undefined {
+    return form.errors[`module_lines.${index}.${field}`];
+}
 </script>
 
 <template>
@@ -95,187 +108,6 @@ function isModuleSelected(moduleId: number, lineIndex: number): boolean {
         <h1 class="text-2xl font-semibold">New Access Request</h1>
 
         <form class="space-y-6" @submit.prevent="submit">
-            <section
-                class="space-y-4 rounded-lg border p-4"
-                aria-labelledby="module-lines-heading"
-            >
-                <div class="flex items-center justify-between gap-4">
-                    <div>
-                        <h2
-                            id="module-lines-heading"
-                            class="text-lg font-medium"
-                        >
-                            Requested modules
-                        </h2>
-                        <p class="text-sm text-gray-600">
-                            Add one or more modules to this request.
-                        </p>
-                    </div>
-                    <button
-                        type="button"
-                        class="rounded border px-3 py-2"
-                        :disabled="form.module_lines.length >= modules.length"
-                        @click="addModuleLine"
-                    >
-                        Add module
-                    </button>
-                </div>
-
-                <p v-if="modules.length === 0" class="text-sm text-gray-600">
-                    No active modules are currently available to request.
-                </p>
-
-                <div
-                    v-for="(line, index) in form.module_lines"
-                    :key="index"
-                    class="space-y-4 rounded-md border p-4"
-                >
-                    <div class="flex items-end gap-3">
-                        <div class="flex-1 space-y-2">
-                            <label
-                                :for="`module-${index}`"
-                                class="block text-sm font-medium"
-                            >
-                                Module
-                            </label>
-                            <select
-                                :id="`module-${index}`"
-                                v-model="line.module_id"
-                                class="w-full rounded border p-2"
-                            >
-                                <option value="" disabled>
-                                    Select a module
-                                </option>
-                                <option
-                                    v-for="module in modules"
-                                    :key="module.id"
-                                    :value="module.id"
-                                    :disabled="
-                                        isModuleSelected(module.id, index)
-                                    "
-                                >
-                                    {{ module.module_name }}
-                                </option>
-                            </select>
-                        </div>
-                        <button
-                            v-if="form.module_lines.length > 1"
-                            type="button"
-                            class="rounded border px-3 py-2"
-                            :aria-label="`Remove module line ${index + 1}`"
-                            @click="removeModuleLine(index)"
-                        >
-                            Remove
-                        </button>
-                    </div>
-
-                    <div class="grid gap-4 sm:grid-cols-2">
-                        <div class="space-y-2">
-                            <label
-                                :for="`access-type-${index}`"
-                                class="block text-sm font-medium"
-                            >
-                                Access type
-                            </label>
-                            <select
-                                :id="`access-type-${index}`"
-                                v-model="line.access_type"
-                                class="w-full rounded border p-2"
-                            >
-                                <option value="" disabled>
-                                    Select an access type
-                                </option>
-                                <option
-                                    v-for="accessType in accessTypes"
-                                    :key="accessType"
-                                    :value="accessType"
-                                >
-                                    {{ accessType }}
-                                </option>
-                            </select>
-                        </div>
-
-                        <div class="space-y-2">
-                            <label
-                                :for="`priority-${index}`"
-                                class="block text-sm font-medium"
-                            >
-                                Priority
-                            </label>
-                            <select
-                                :id="`priority-${index}`"
-                                v-model="line.priority"
-                                class="w-full rounded border p-2"
-                            >
-                                <option value="" disabled>
-                                    Select a priority
-                                </option>
-                                <option
-                                    v-for="priority in priorities"
-                                    :key="priority"
-                                    :value="priority"
-                                >
-                                    {{ priority }}
-                                </option>
-                            </select>
-                        </div>
-
-                        <div class="space-y-2 sm:col-span-2">
-                            <label
-                                :for="`justification-${index}`"
-                                class="block text-sm font-medium"
-                            >
-                                Justification
-                                <span class="font-normal text-gray-500"
-                                    >(optional)</span
-                                >
-                            </label>
-                            <textarea
-                                :id="`justification-${index}`"
-                                v-model="line.justification"
-                                rows="3"
-                                class="w-full rounded border p-2"
-                            />
-                        </div>
-
-                        <div class="space-y-2">
-                            <label
-                                :for="`start-date-${index}`"
-                                class="block text-sm font-medium"
-                            >
-                                Start date
-                                <span class="font-normal text-gray-500"
-                                    >(optional)</span
-                                >
-                            </label>
-                            <input
-                                :id="`start-date-${index}`"
-                                v-model="line.start_date"
-                                type="date"
-                                class="w-full rounded border p-2"
-                            />
-                        </div>
-
-                        <div class="space-y-2">
-                            <label
-                                :for="`end-date-${index}`"
-                                class="block text-sm font-medium"
-                            >
-                                End date
-                                <span class="font-normal text-gray-500"
-                                    >(optional)</span
-                                >
-                            </label>
-                            <input
-                                :id="`end-date-${index}`"
-                                v-model="line.end_date"
-                                type="date"
-                                class="w-full rounded border p-2"
-                            />
-                        </div>
-                    </div>
-                </div>
-            </section>
 
             <section class="max-w-lg space-y-4 rounded-lg border p-4">
                 <h2 class="text-lg font-medium">Beneficiary</h2>
@@ -313,8 +145,21 @@ function isModuleSelected(moduleId: number, lineIndex: number): boolean {
                         id="internal_beneficiary"
                         v-model="form.internal_beneficiary"
                         class="w-full rounded border p-2"
+                        :aria-invalid="Boolean(form.errors.internal_beneficiary)"
+                        :aria-describedby="
+                            form.errors.internal_beneficiary
+                                ? 'internal-beneficiary-error'
+                                : undefined
+                        "
                     >
-                        <option value="" disabled>
+                        <option
+                            v-if="internalBeneficiaries.length === 0"
+                            value=""
+                            disabled
+                        >
+                            No eligible internal users are available
+                        </option>
+                        <option v-else value="" disabled>
                             Select an internal user
                         </option>
                         <option
@@ -325,6 +170,13 @@ function isModuleSelected(moduleId: number, lineIndex: number): boolean {
                             {{ beneficiary.fullname }} ({{ beneficiary.email }})
                         </option>
                     </select>
+                    <p
+                        v-if="form.errors.internal_beneficiary"
+                        id="internal-beneficiary-error"
+                        class="text-sm text-red-600"
+                    >
+                        {{ form.errors.internal_beneficiary }}
+                    </p>
                 </div>
 
                 <div
@@ -346,6 +198,273 @@ function isModuleSelected(moduleId: number, lineIndex: number): boolean {
                     />
                 </div>
             </section>
+
+            <section
+                class="space-y-4 rounded-lg border p-4"
+                aria-labelledby="module-lines-heading"
+            >
+                <div class="flex items-center justify-between gap-4">
+                    <div>
+                        <h2
+                            id="module-lines-heading"
+                            class="text-lg font-medium"
+                        >
+                            Requested modules
+                        </h2>
+                        <p class="text-sm text-gray-600">
+                            Add one or more modules to this request.
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        class="rounded border px-3 py-2"
+                        :disabled="form.module_lines.length >= modules.length"
+                        @click="addModuleLine"
+                    >
+                        Add module
+                    </button>
+                </div>
+
+                <p v-if="modules.length === 0" class="text-sm text-gray-600">
+                    No active modules are currently available to request.
+                </p>
+
+                <div
+                    v-for="(line, index) in form.module_lines"
+                    :key="index"
+                    class="space-y-4 rounded-md border p-4"
+                    role="group"
+                    :aria-label="`Module request ${index + 1}`"
+                >
+                    <h3 class="font-medium">Module request {{ index + 1 }}</h3>
+                    <div class="flex items-end gap-3">
+                        <div class="flex-1 space-y-2">
+                            <label
+                                :for="`module-${index}`"
+                                class="block text-sm font-medium"
+                            >
+                                Module
+                            </label>
+                            <select
+                                :id="`module-${index}`"
+                                v-model="line.module_id"
+                                class="w-full rounded border p-2"
+                                required
+                                :aria-invalid="Boolean(moduleLineError(index, 'module_id'))"
+                                :aria-describedby="
+                                    moduleLineError(index, 'module_id')
+                                        ? `module-${index}-error`
+                                        : undefined
+                                "
+                            >
+                                <option value="" disabled>
+                                    Select a module
+                                </option>
+                                <option
+                                    v-for="module in modules"
+                                    :key="module.id"
+                                    :value="module.id"
+                                    :disabled="
+                                        isModuleSelected(module.id, index)
+                                    "
+                                >
+                                    {{ module.module_name }}
+                                </option>
+                            </select>
+                            <p
+                                v-if="moduleLineError(index, 'module_id')"
+                                :id="`module-${index}-error`"
+                                class="text-sm text-red-600"
+                            >
+                                {{ moduleLineError(index, 'module_id') }}
+                            </p>
+                        </div>
+                        <button
+                            v-if="form.module_lines.length > 1"
+                            type="button"
+                            class="rounded border px-3 py-2"
+                            :aria-label="`Remove module line ${index + 1}`"
+                            @click="removeModuleLine(index)"
+                        >
+                            Remove
+                        </button>
+                    </div>
+
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div class="space-y-2">
+                            <label
+                                :for="`access-type-${index}`"
+                                class="block text-sm font-medium"
+                            >
+                                Access type
+                            </label>
+                            <select
+                                :id="`access-type-${index}`"
+                                v-model="line.access_type"
+                                class="w-full rounded border p-2"
+                                required
+                                :aria-invalid="Boolean(moduleLineError(index, 'access_type'))"
+                                :aria-describedby="
+                                    moduleLineError(index, 'access_type')
+                                        ? `access-type-${index}-error`
+                                        : undefined
+                                "
+                            >
+                                <option value="" disabled>
+                                    Select an access type
+                                </option>
+                                <option
+                                    v-for="accessType in accessTypes"
+                                    :key="accessType"
+                                    :value="accessType"
+                                >
+                                    {{ accessType }}
+                                </option>
+                            </select>
+                            <p
+                                v-if="moduleLineError(index, 'access_type')"
+                                :id="`access-type-${index}-error`"
+                                class="text-sm text-red-600"
+                            >
+                                {{ moduleLineError(index, 'access_type') }}
+                            </p>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label
+                                :for="`priority-${index}`"
+                                class="block text-sm font-medium"
+                            >
+                                Priority
+                            </label>
+                            <select
+                                :id="`priority-${index}`"
+                                v-model="line.priority"
+                                class="w-full rounded border p-2"
+                                required
+                                :aria-invalid="Boolean(moduleLineError(index, 'priority'))"
+                                :aria-describedby="
+                                    moduleLineError(index, 'priority')
+                                        ? `priority-${index}-error`
+                                        : undefined
+                                "
+                            >
+                                <option value="" disabled>
+                                    Select a priority
+                                </option>
+                                <option
+                                    v-for="priority in priorities"
+                                    :key="priority"
+                                    :value="priority"
+                                >
+                                    {{ priority }}
+                                </option>
+                            </select>
+                            <p
+                                v-if="moduleLineError(index, 'priority')"
+                                :id="`priority-${index}-error`"
+                                class="text-sm text-red-600"
+                            >
+                                {{ moduleLineError(index, 'priority') }}
+                            </p>
+                        </div>
+
+                        <div class="space-y-2 sm:col-span-2">
+                            <label
+                                :for="`justification-${index}`"
+                                class="block text-sm font-medium"
+                            >
+                                Justification
+                                <span class="font-normal text-gray-500"
+                                    >(optional)</span
+                                >
+                            </label>
+                            <textarea
+                                :id="`justification-${index}`"
+                                v-model="line.justification"
+                                rows="3"
+                                class="w-full rounded border p-2"
+                                :aria-invalid="Boolean(moduleLineError(index, 'justification'))"
+                                :aria-describedby="
+                                    moduleLineError(index, 'justification')
+                                        ? `justification-${index}-error`
+                                        : undefined
+                                "
+                            />
+                            <p
+                                v-if="moduleLineError(index, 'justification')"
+                                :id="`justification-${index}-error`"
+                                class="text-sm text-red-600"
+                            >
+                                {{ moduleLineError(index, 'justification') }}
+                            </p>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label
+                                :for="`start-date-${index}`"
+                                class="block text-sm font-medium"
+                            >
+                                Start date
+                                <span class="font-normal text-gray-500"
+                                    >(optional)</span
+                                >
+                            </label>
+                            <input
+                                :id="`start-date-${index}`"
+                                v-model="line.start_date"
+                                type="date"
+                                class="w-full rounded border p-2"
+                                :aria-invalid="Boolean(moduleLineError(index, 'start_date'))"
+                                :aria-describedby="
+                                    moduleLineError(index, 'start_date')
+                                        ? `start-date-${index}-error`
+                                        : undefined
+                                "
+                            />
+                            <p
+                                v-if="moduleLineError(index, 'start_date')"
+                                :id="`start-date-${index}-error`"
+                                class="text-sm text-red-600"
+                            >
+                                {{ moduleLineError(index, 'start_date') }}
+                            </p>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label
+                                :for="`end-date-${index}`"
+                                class="block text-sm font-medium"
+                            >
+                                End date
+                                <span class="font-normal text-gray-500"
+                                    >(optional)</span
+                                >
+                            </label>
+                            <input
+                                :id="`end-date-${index}`"
+                                v-model="line.end_date"
+                                type="date"
+                                class="w-full rounded border p-2"
+                                :aria-invalid="Boolean(moduleLineError(index, 'end_date'))"
+                                :aria-describedby="
+                                    moduleLineError(index, 'end_date')
+                                        ? `end-date-${index}-error`
+                                        : undefined
+                                "
+                            />
+                            <p
+                                v-if="moduleLineError(index, 'end_date')"
+                                :id="`end-date-${index}-error`"
+                                class="text-sm text-red-600"
+                            >
+                                {{ moduleLineError(index, 'end_date') }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
 
             <section class="space-y-3 rounded-lg border p-4">
                 <div>

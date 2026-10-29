@@ -1,17 +1,11 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from 'vue';
-
-defineOptions({
-    inheritAttrs: false,
-});
-
-type Props = {
-    className?: HTMLAttributes['class'];
-};
-
-defineProps<Props>();
+defineOptions({ inheritAttrs: true });
 </script>
 
 <template>
-    <img src=/Perdana-Petroleum-Emblem.png>
+    <img
+        src="/Perdana-Petroleum-Emblem.png"
+        alt="Perdana Petroleum"
+        class="object-contain"
+    />
 </template>

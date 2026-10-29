@@ -2,6 +2,10 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\AccessRequestDetailStatus;
+use App\Enums\ApprovalStatus;
+use App\Models\AccessRequestApproval;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -35,11 +39,28 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $user = $request->user();
+
         return [
             ...parent::share($request),
             'name' => config('app.name'),
             'auth' => [
-                'user' => $request->user(),
+                'user' => $user,
+                'roles' => fn (): array => $user instanceof User
+                    ? $user->getRoleNames()->all()
+                    : [],
+                'canApprove' => fn (): bool => $user instanceof User
+                    && AccessRequestApproval::query()
+                        ->where('approver_id', $user->getKey())
+                        ->where('status', ApprovalStatus::Pending->value)
+                        ->whereHas(
+                            'requestDetail',
+                            fn ($details) => $details->where(
+                                'status',
+                                AccessRequestDetailStatus::Pending->value,
+                            ),
+                        )
+                        ->exists(),
             ],
         ];
     }

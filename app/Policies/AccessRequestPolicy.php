@@ -52,6 +52,7 @@ class AccessRequestPolicy
     public function selectInternalBeneficiary(User $user, User $beneficiary): bool
     {
         return ! $user->hasRole('Admin')
+            && $beneficiary->is_active
             && $beneficiary->isEligibleInternalBeneficiary();
     }
 }

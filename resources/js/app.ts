@@ -1,4 +1,6 @@
+import '../css/app.css'
 import { createInertiaApp } from '@inertiajs/vue3';
+import ui from '@nuxt/ui/vue-plugin';
 import { initializeTheme } from '@/composables/useAppearance';
 import AppLayout from '@/layouts/AppLayout.vue';
 import AuthLayout from '@/layouts/AuthLayout.vue';
@@ -22,6 +24,7 @@ void createInertiaApp({
         }
     },
     withApp: (app) => {
+        app.use(ui);
         app.directive('focus', {
             mounted: (el: HTMLElement, shouldFocus) => {
                 if (shouldFocus.value !== false) {

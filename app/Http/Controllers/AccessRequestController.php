@@ -7,14 +7,17 @@ use App\Enums\RequestPriority;
 use App\Http\Requests\StoreAccessRequestRequest;
 use App\Models\AccessModuleConfig;
 use App\Models\AccessRequest;
+use App\Models\AccessRequestAttachment;
 use App\Models\User;
 use App\Policies\AccessRequestPolicy;
 use App\Services\AccessRequestCancellationService;
 use App\Services\AccessRequestSubmissionService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AccessRequestController extends Controller
 {
@@ -56,6 +59,7 @@ class AccessRequestController extends Controller
                 ->get(['id', 'module_name']),
             'internalBeneficiaries' => User::query()
                 ->eligibleInternalBeneficiaries()
+                ->where('is_active', true)
                 ->whereKeyNot($request->user()->getKey())
                 ->orderBy('fullname')
                 ->get(['id', 'fullname', 'email']),
@@ -123,9 +127,96 @@ class AccessRequestController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(AccessRequest $accessRequest)
-    {
-        //
+    public function show(
+        Request $request,
+        AccessRequest $accessRequest,
+        AccessRequestPolicy $policy,
+    ): Response {
+        $user = $request->user();
+
+        abort_unless($user instanceof User, 401);
+        abort_unless($policy->view($user, $accessRequest), 403);
+
+        $accessRequest->load([
+            'requestedBy',
+            'internalBeneficiary',
+            'details' => fn ($query) => $query->orderBy('id'),
+            'details.module',
+            'details.approvals' => fn ($query) => $query->orderBy('created_at')->orderBy('id'),
+            'details.approvals.approver',
+            'comments' => fn ($query) => $query->orderBy('created_at')->orderBy('id'),
+            'comments.commentedBy',
+            'attachments' => fn ($query) => $query->orderBy('created_at')->orderBy('id'),
+        ]);
+        $beneficiary = $accessRequest->resolveBeneficiary();
+
+        return Inertia::render('requests/view', [
+            'accessRequest' => [
+                'id' => $accessRequest->id,
+                'status' => $accessRequest->status,
+                'created_at' => $accessRequest->created_at,
+                'requested_by' => $accessRequest->requestedBy === null
+                    ? null
+                    : ['fullname' => $accessRequest->requestedBy->fullname],
+                'beneficiary' => $beneficiary instanceof User
+                    ? $beneficiary->fullname
+                    : $beneficiary,
+                'details' => $accessRequest->details->map(static fn ($detail): array => [
+                    'id' => $detail->id,
+                    'access_type' => $detail->access_type,
+                    'priority' => $detail->priority,
+                    'justification' => $detail->justification,
+                    'start_date' => $detail->start_date,
+                    'end_date' => $detail->end_date,
+                    'status' => $detail->status,
+                    'module' => $detail->module === null
+                        ? null
+                        : ['module_name' => $detail->module->module_name],
+                    'approvals' => $detail->approvals->map(static fn ($approval): array => [
+                        'id' => $approval->id,
+                        'step' => $approval->step,
+                        'status' => $approval->status,
+                        'rejection_reason' => $approval->rejection_reason,
+                        'created_at' => $approval->created_at,
+                        'updated_at' => $approval->updated_at,
+                        'approver' => $approval->approver === null
+                            ? null
+                            : ['fullname' => $approval->approver->fullname],
+                    ])->all(),
+                ])->all(),
+                'comments' => $accessRequest->comments->map(static fn ($comment): array => [
+                    'id' => $comment->id,
+                    'comment' => $comment->comment,
+                    'created_at' => $comment->created_at,
+                    'commented_by' => $comment->commentedBy === null
+                        ? null
+                        : ['fullname' => $comment->commentedBy->fullname],
+                ])->all(),
+                'attachments' => $accessRequest->attachments->map(static fn ($attachment): array => [
+                    'id' => $attachment->id,
+                    'file_name' => $attachment->file_name,
+                    'file_size' => $attachment->file_size,
+                    'created_at' => $attachment->created_at,
+                ])->all(),
+            ],
+            'canCancel' => $policy->cancel($user, $accessRequest),
+        ]);
+    }
+
+    public function downloadAttachment(
+        Request $request,
+        AccessRequest $accessRequest,
+        AccessRequestAttachment $attachment,
+        AccessRequestPolicy $policy,
+    ): StreamedResponse {
+        $user = $request->user();
+
+        abort_unless($user instanceof User, 401);
+        abort_unless($policy->view($user, $accessRequest), 403);
+        abort_unless($accessRequest->attachments()->whereKey($attachment->getKey())->exists(), 404);
+        abort_unless(Storage::disk('local')->exists($attachment->file_path), 404);
+
+        return Storage::disk('local')->download($attachment->file_path, $attachment->file_name);
     }
 
     /**
