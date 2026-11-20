@@ -1,5 +1,15 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableEmpty,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 
 defineProps<{
     users: {
@@ -23,49 +33,107 @@ function paginationLabel(label: string): string {
 <template>
     <Head title="Users" />
 
-    <main class="space-y-6 p-6">
-        <div class="mb-4 flex items-center justify-between">
-            <h1 class="text-2xl font-semibold">Users</h1>
+    <main class="mx-auto w-full flex-1 space-y-8 p-4 sm:p-6 lg:p-8">
+        <header class="flex flex-wrap items-end justify-between gap-4">
+            <div>
+                <h1 class="text-3xl font-semibold tracking-tight">Users</h1>
+                <p class="text-muted-foreground mt-2 text-sm">
+                    Manage user accounts, departments, and assigned roles.
+                </p>
+            </div>
             <Link
                 href="/users/create"
-                class="rounded bg-primary px-4 py-2 text-primary-foreground"
+                class="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg px-4 py-2 text-sm font-semibold transition"
             >
                 + Add User
             </Link>
-        </div>
+        </header>
 
-        <div class="overflow-x-auto">
-            <table class="w-full border-collapse text-left">
-                <thead>
-                    <tr class="border-b">
-                        <th class="p-2">Name</th>
-                        <th class="p-2">Email</th>
-                        <th class="p-2">Department</th>
-                        <th class="p-2">Roles</th>
-                        <th class="p-2">Status</th>
-                        <th class="p-2">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="user in users.data" :key="user.id" class="border-b">
-                        <td class="p-2">{{ user.fullname }}</td>
-                        <td class="p-2">{{ user.email }}</td>
-                        <td class="p-2">{{ user.department?.name ?? '—' }}</td>
-                        <td class="p-2">{{ user.roles.map((role) => role.name).join(', ') }}</td>
-                        <td class="p-2">{{ user.is_active ? 'Active' : 'Inactive' }}</td>
-                        <td class="flex gap-3 p-2">
-                            <Link :href="`/users/${user.id}`">View</Link>
-                            <Link :href="`/users/${user.id}/edit`">Edit</Link>
-                        </td>
-                    </tr>
-                    <tr v-if="users.data.length === 0">
-                        <td class="p-4 text-center text-muted-foreground" colspan="6">
+        <section class="space-y-4" aria-labelledby="user-directory">
+            <header class="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                    <h2
+                        id="user-directory"
+                        class="text-xl font-semibold tracking-tight"
+                    >
+                        User directory
+                    </h2>
+                    <p class="text-muted-foreground mt-1.5 text-sm">
+                        Review account details and access status.
+                    </p>
+                </div>
+                <span
+                    class="bg-muted text-muted-foreground rounded-full px-3 py-1 text-xs font-semibold"
+                >
+                    {{ users.data.length }} on this page
+                </span>
+            </header>
+
+            <div class="bg-card overflow-hidden rounded-2xl border shadow-sm">
+                <Table class="min-w-[900px]">
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Email</TableHead>
+                            <TableHead>Department</TableHead>
+                            <TableHead>Roles</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        <TableRow v-for="user in users.data" :key="user.id">
+                            <TableCell class="font-medium">
+                                {{ user.fullname }}
+                            </TableCell>
+                            <TableCell>{{ user.email }}</TableCell>
+                            <TableCell>
+                                {{ user.department?.name ?? '—' }}
+                            </TableCell>
+                            <TableCell class="whitespace-normal">
+                                {{
+                                    user.roles
+                                        .map((role) => role.name)
+                                        .join(', ')
+                                }}
+                            </TableCell>
+                            <TableCell>
+                                <Badge
+                                    :variant="
+                                        user.is_active ? 'default' : 'outline'
+                                    "
+                                >
+                                    {{ user.is_active ? 'Active' : 'Inactive' }}
+                                </Badge>
+                            </TableCell>
+                            <TableCell>
+                                <div class="flex items-center gap-4">
+                                    <Link
+                                        :href="`/users/${user.id}`"
+                                        class="text-primary hover:text-primary/80 text-sm font-semibold transition"
+                                    >
+                                        View
+                                    </Link>
+                                    <Link
+                                        :href="`/users/${user.id}/edit`"
+                                        class="text-primary hover:text-primary/80 text-sm font-semibold transition"
+                                    >
+                                        Edit
+                                    </Link>
+                                </div>
+                            </TableCell>
+                        </TableRow>
+                        <TableEmpty
+                            v-if="users.data.length === 0"
+                            :colspan="6"
+                            class="text-muted-foreground"
+                        >
                             No users found.
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+                        </TableEmpty>
+                    </TableBody>
+                </Table>
+            </div>
+        </section>
 
         <nav
             v-if="users.links.length > 3"
@@ -77,11 +145,16 @@ function paginationLabel(label: string): string {
                     v-if="link.url"
                     :href="link.url"
                     class="rounded border px-3 py-1"
-                    :class="{ 'bg-primary text-primary-foreground': link.active }"
+                    :class="{
+                        'bg-primary text-primary-foreground': link.active,
+                    }"
                 >
                     {{ paginationLabel(link.label) }}
                 </Link>
-                <span v-else class="rounded border px-3 py-1 text-muted-foreground">
+                <span
+                    v-else
+                    class="text-muted-foreground rounded border px-3 py-1"
+                >
                     {{ paginationLabel(link.label) }}
                 </span>
             </template>

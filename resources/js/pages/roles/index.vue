@@ -1,5 +1,14 @@
 <script setup lang="ts">
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableEmpty,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
 
 defineProps<{
     roles: {
@@ -29,50 +38,99 @@ function paginationLabel(label: string): string {
 <template>
     <Head title="Roles" />
 
-    <div class="p-6">
-        <div class="mb-4 flex items-center justify-between">
-            <h1 class="text-2xl font-semibold">Roles</h1>
+    <main class="mx-auto w-full flex-1 space-y-8 p-4 sm:p-6 lg:p-8">
+        <header class="flex flex-wrap items-end justify-between gap-4">
+            <div>
+                <h1 class="text-3xl font-semibold tracking-tight">Roles</h1>
+                <p class="text-muted-foreground mt-2 text-sm">
+                    Manage roles and the access rules assigned to each role.
+                </p>
+            </div>
             <Link
                 href="/roles/create"
-                class="rounded bg-black px-4 py-2 text-white"
+                class="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg px-4 py-2 text-sm font-semibold transition"
             >
                 + Add Role
             </Link>
-        </div>
+        </header>
 
         <p v-if="page.props.errors.role" class="mb-4 text-sm text-red-600">
             {{ page.props.errors.role }}
         </p>
 
-        <table class="w-full border text-left">
-            <thead>
-                <tr class="border-b bg-gray-50">
-                    <th class="p-2">Name</th>
-                    <th class="p-2">Users</th>
-                    <th class="p-2">Module approver rules</th>
-                    <th class="p-2">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr v-for="role in roles.data" :key="role.id" class="border-b">
-                    <td class="p-2">{{ role.name }}</td>
-                    <td class="p-2">{{ role.users_count }}</td>
-                    <td class="p-2">{{ role.module_approvers_count }}</td>
-                    <td class="flex gap-3 p-2">
-                        <Link :href="`/roles/${role.id}`">View</Link>
-                        <Link :href="`/roles/${role.id}/edit`">Edit</Link>
-                        <button class="text-red-600" @click="remove(role.id)">
-                            Delete
-                        </button>
-                    </td>
-                </tr>
-                <tr v-if="roles.data.length === 0">
-                    <td colspan="4" class="p-4 text-center text-muted-foreground">
-                        No roles found.
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+        <section class="space-y-4" aria-labelledby="role-directory">
+            <header class="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                    <h2
+                        id="role-directory"
+                        class="text-xl font-semibold tracking-tight"
+                    >
+                        Role directory
+                    </h2>
+                    <p class="text-muted-foreground mt-1.5 text-sm">
+                        Review role assignments and module approver rules.
+                    </p>
+                </div>
+                <span
+                    class="bg-muted text-muted-foreground rounded-full px-3 py-1 text-xs font-semibold"
+                >
+                    {{ roles.data.length }} on this page
+                </span>
+            </header>
+
+            <div class="bg-card overflow-hidden rounded-2xl border shadow-sm">
+                <Table class="min-w-[700px]">
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Name</TableHead>
+                            <TableHead>Users</TableHead>
+                            <TableHead>Module approver rules</TableHead>
+                            <TableHead>Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        <TableRow v-for="role in roles.data" :key="role.id">
+                            <TableCell class="font-medium">
+                                {{ role.name }}
+                            </TableCell>
+                            <TableCell>{{ role.users_count }}</TableCell>
+                            <TableCell>
+                                {{ role.module_approvers_count }}
+                            </TableCell>
+                            <TableCell>
+                                <div class="flex items-center gap-4">
+                                    <Link
+                                        :href="`/roles/${role.id}`"
+                                        class="text-primary hover:text-primary/80 text-sm font-semibold transition"
+                                    >
+                                        View
+                                    </Link>
+                                    <Link
+                                        :href="`/roles/${role.id}/edit`"
+                                        class="text-primary hover:text-primary/80 text-sm font-semibold transition"
+                                    >
+                                        Edit
+                                    </Link>
+                                    <button
+                                        class="text-destructive hover:text-destructive/80 text-sm font-semibold transition"
+                                        @click="remove(role.id)"
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
+                            </TableCell>
+                        </TableRow>
+                        <TableEmpty
+                            v-if="roles.data.length === 0"
+                            :colspan="4"
+                            class="text-muted-foreground"
+                        >
+                            No roles found.
+                        </TableEmpty>
+                    </TableBody>
+                </Table>
+            </div>
+        </section>
 
         <nav
             v-if="roles.links.length > 3"
@@ -93,5 +151,5 @@ function paginationLabel(label: string): string {
                 </span>
             </template>
         </nav>
-    </div>
+    </main>
 </template>

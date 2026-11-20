@@ -4,7 +4,7 @@ defineOptions({ inheritAttrs: true });
 
 <template>
     <img
-        src="/Perdana-Petroleum-Emblem.png"
+        src="/ARMS_LOGO.png"
         alt="Perdana Petroleum"
         class="object-contain"
     />

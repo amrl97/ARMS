@@ -7,8 +7,12 @@ use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
-Route::inertia('/', 'auth/Login')->name('home');
+Route::get('/', fn () => Inertia::render('auth/Login', [
+    'canResetPassword' => Route::has('password.request'),
+    'status' => session('status'),
+]))->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::inertia('home', 'Home')->name('app.home');
